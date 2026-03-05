@@ -35,9 +35,7 @@ def main() -> None:
     print('Shapes (train/val/test):', X_train.shape, X_val.shape, X_test.shape)
     print('Window config:', cfg)
 
-    # -------------------
     # Persistence baseline
-    # -------------------
     y_val_true, y_val_pred = persistence_predict(X_val, cfg)
     y_test_true, y_test_pred = persistence_predict(X_test, cfg)
 
@@ -46,9 +44,7 @@ def main() -> None:
     print('  Test MAE:', mae(y_test_true, y_test_pred), 'RMSE:', rmse(y_test_true, y_test_pred))
     print('  Test per-feature RMSE:', per_feature_rmse(y_test_true, y_test_pred))
 
-    # -------------------
     # Ridge regression baseline
-    # -------------------
     y_val_true, y_val_pred = ridge_train_predict(X_train, X_val, cfg, alpha=1.0)
     y_test_true, y_test_pred = ridge_train_predict(X_train, X_test, cfg, alpha=1.0)
 
