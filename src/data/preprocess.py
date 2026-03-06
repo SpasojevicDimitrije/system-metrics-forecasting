@@ -71,7 +71,6 @@ def preprocess_vm_csv(
 
     df = df.loc[:, cfg.features].copy()
 
-    # The CSV is already sampled correctly. We only handle missing values here.
     df_filled = df.ffill().fillna(0.0)
 
     n = len(df_filled)
