@@ -6,6 +6,7 @@ from typing import Tuple
 
 import numpy as np
 import pandas as pd
+import joblib
 from sklearn.preprocessing import StandardScaler
 
 from src.data.load_bitbrains import load_bitbrains_csv
@@ -13,11 +14,10 @@ from src.data.load_bitbrains import load_bitbrains_csv
 
 @dataclass(frozen=True)
 class PreprocessConfig:
-    sampling_seconds: int = 300  # 5 minutes
+    sampling_seconds: int = 300  # CSV is already sampled at 5 minutes
     train_frac: float = 0.70
     val_frac: float = 0.15
     test_frac: float = 0.15
-    # Feature set (dynamic metrics only)
     features: Tuple[str, ...] = (
         'CPU usage [%]',
         'Memory usage [KB]',
@@ -28,7 +28,12 @@ class PreprocessConfig:
     )
 
 
-def _time_split_indices(n: int, train_frac: float, val_frac: float, test_frac: float) -> Tuple[slice, slice, slice]:
+def _time_split_indices(
+    n: int,
+    train_frac: float,
+    val_frac: float,
+    test_frac: float,
+) -> Tuple[slice, slice, slice]:
     if not np.isclose(train_frac + val_frac + test_frac, 1.0):
         raise ValueError('train_frac + val_frac + test_frac must sum to 1.0')
 
@@ -48,13 +53,15 @@ def preprocess_vm_csv(
     cfg: PreprocessConfig,
 ) -> dict:
     """
-    Loads one VM trace CSV and produces scaled train/val/test arrays.
+    Load one VM trace CSV, select configured features, fill missing values,
+    perform a chronological train/val/test split, and standardize using
+    train statistics only.
 
     Returns a dict with:
-      - df_raw (selected features, reindexed)
-      - splits: X_train, X_val, X_test (np.ndarray)
+      - df_features: filled selected features
+      - X_train, X_val, X_test: scaled arrays
       - scaler: fitted StandardScaler
-      - index splits: idx_train, idx_val, idx_test (DatetimeIndex)
+      - idx_train, idx_val, idx_test: DatetimeIndex splits
     """
     df = load_bitbrains_csv(csv_path)
 
@@ -64,10 +71,9 @@ def preprocess_vm_csv(
 
     df = df.loc[:, cfg.features].copy()
 
-    # Handle potential missing values
+    # The CSV is already sampled correctly. We only handle missing values here.
     df_filled = df.ffill().fillna(0.0)
 
-    # Time split
     n = len(df_filled)
     train_sl, val_sl, test_sl = _time_split_indices(n, cfg.train_frac, cfg.val_frac, cfg.test_frac)
 
@@ -99,20 +105,21 @@ def save_processed(out_dir: str | Path, vm_name: str, payload: dict) -> None:
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    # Save arrays
     np.save(out_dir / f'{vm_name}_X_train.npy', payload['X_train'])
     np.save(out_dir / f'{vm_name}_X_val.npy', payload['X_val'])
     np.save(out_dir / f'{vm_name}_X_test.npy', payload['X_test'])
 
-    # Save feature names
-    (out_dir / f'{vm_name}_features.txt').write_text('\n'.join(payload['feature_names']), encoding='utf-8')
+    joblib.dump(payload['scaler'], out_dir / f'{vm_name}_scaler.joblib')
 
-    # Save index timestamps for reproducibility
+    (out_dir / f'{vm_name}_features.txt').write_text(
+        '\n'.join(payload['feature_names']),
+        encoding='utf-8',
+    )
+
     pd.Series(payload['idx_train']).to_csv(out_dir / f'{vm_name}_idx_train.csv', index=False)
     pd.Series(payload['idx_val']).to_csv(out_dir / f'{vm_name}_idx_val.csv', index=False)
     pd.Series(payload['idx_test']).to_csv(out_dir / f'{vm_name}_idx_test.csv', index=False)
 
-    # Save a small metadata JSON-like text
     meta = [
         f"total_points={payload['total_points']}",
         f"missing_points_before_fill={payload['missing_points']}",

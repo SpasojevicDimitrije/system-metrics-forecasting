@@ -44,15 +44,25 @@ def var_predict_sequence(
     """
     Produce recursive one-step-ahead forecasts over X_future.
 
-    Important:
-    - fitted model is trained once on train data
-    - history should initially be the training sequence
-    - after each prediction step, the true observed point from X_future
-      is appended to history (teacher forcing evaluation)
+    Evaluation uses teacher forcing:
+    after each prediction, the true observed point from X_future is appended
+    to history before forecasting the next step.
 
-    Returns:
-      y_true: (N, D)
-      y_pred: (N, D)
+    Parameters
+    ----------
+    fitted : FittedVAR
+        VAR fitted on training data only.
+    history : np.ndarray
+        Available observed history before the forecast segment, shape (T_hist, D).
+    X_future : np.ndarray
+        Forecast segment to evaluate on, shape (T_future, D).
+
+    Returns
+    -------
+    y_true : np.ndarray
+        True targets, shape (T_future, D).
+    y_pred : np.ndarray
+        One-step-ahead forecasts, shape (T_future, D).
     """
     if history.ndim != 2 or X_future.ndim != 2:
         raise ValueError(
@@ -60,9 +70,14 @@ def var_predict_sequence(
         )
 
     p = fitted.lag_order
-    results = fitted.results
+    if len(history) < p:
+        raise ValueError(
+            f'History must contain at least lag_order={p} points. Got len(history)={len(history)}'
+        )
 
+    results = fitted.results
     hist = history.copy()
+
     y_true = []
     y_pred = []
 
@@ -73,7 +88,6 @@ def var_predict_sequence(
         y_true.append(X_future[t])
         y_pred.append(pred)
 
-        # append the true next observation before predicting the following step
         hist = np.vstack([hist, X_future[t]])
 
     return np.asarray(y_true), np.asarray(y_pred)
