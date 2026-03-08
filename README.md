@@ -55,12 +55,14 @@ data/
     raw/
     processed/
 
-notebooks/
+scripts/
 
 src/
     data/
     models/
-evaluation/
+    evaluation/
+    utils/
+
 reports/
 
 ---
