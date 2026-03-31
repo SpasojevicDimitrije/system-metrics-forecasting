@@ -16,11 +16,9 @@ The dataset consists of virtual machine performance traces from the Bitbrains Cl
 The objective is to predict the next system state:
 
 
-\[
-\hat{x}_{t+1} = f(x_t, x_{t-1}, ..., x_{t-k})
-\]
+$$\hat{x}_{t+1} = f(x_t, x_{t-1}, \dots, x_{t-k})$$
 
-where \( x_t \in \mathbb{R}^d \) represents the system metrics at time \( t \).
+where $x_t \in \mathbb{R}^d$ represents the system metrics at time $t$.
 
 ---
 
@@ -51,19 +49,19 @@ Each CSV file contains approximately 10,000 time steps sampled at regular interv
 
 ## Repository Structure
 
-data/
-    raw/
-    processed/
-
-scripts/
-
-src/
-    data/
-    models/
-    evaluation/
-    utils/
-
-reports/
+```
+project-root/
+├── data/
+│   ├── raw/
+│   └── processed/
+├── scripts/
+├── src/
+│   ├── data/
+│   ├── models/
+│   ├── evaluation/
+│   └── utils/
+└── reports/
+```
 
 ---
 
